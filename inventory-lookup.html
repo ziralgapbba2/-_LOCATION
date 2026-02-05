@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>재고 위치 조회</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px 30px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 30px;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .search-box {
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 15px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .result {
+            margin-top: 30px;
+            padding: 30px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+            animation: slideIn 0.4s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-label {
+            color: #666;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .result-value {
+            color: #333;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 25px;
+            word-break: break-all;
+        }
+
+        .location-value {
+            color: #667eea;
+            font-size: 48px;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 15px;
+            text-align: center;
+            font-weight: 600;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .divider {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #ddd, transparent);
+            margin: 20px 0;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .result-value {
+                font-size: 28px;
+            }
+
+            .location-value {
+                font-size: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📦 재고 위치 조회</h1>
+        
+        <div class="search-box">
+            <label for="productCode">제품코드</label>
+            <input 
+                type="text" 
+                id="productCode" 
+                placeholder="예: SST0700130"
+                autocomplete="off"
+            >
+            <button onclick="searchProduct()">🔍 검색</button>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="result" id="result">
+            <div class="result-label">제품명</div>
+            <div class="result-value" id="productName"></div>
+            
+            <div class="divider"></div>
+            
+            <div class="result-label">보관 위치</div>
+            <div class="result-value location-value" id="productLocation"></div>
+        </div>
+    </div>
+
+    <script>
+        // 재고 데이터
+        const inventory = {
+            'SST0700130': { name: '락킹클립', loc: 'A01A01' },
+            'SUD0300180': { name: '아답터(소-L)', loc: 'A01A02' },
+            'SST0200060': { name: '입수밸브', loc: 'A01A03' },
+            'SST0200140': { name: '스템엘보', loc: 'A01A04' }
+        };
+
+        const input = document.getElementById('productCode');
+        const resultDiv = document.getElementById('result');
+        const errorDiv = document.getElementById('error');
+        const productNameEl = document.getElementById('productName');
+        const productLocationEl = document.getElementById('productLocation');
+
+        // Enter 키 이벤트
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchProduct();
+            }
+        });
+
+        function searchProduct() {
+            const code = input.value.trim().toUpperCase();
+            
+            // 초기화
+            resultDiv.classList.remove('show');
+            errorDiv.classList.remove('show');
+            
+            if (!code) {
+                showError('제품코드를 입력해주세요.');
+                return;
+            }
+            
+            const product = inventory[code];
+            
+            if (product) {
+                productNameEl.textContent = product.name;
+                productLocationEl.textContent = product.loc;
+                resultDiv.classList.add('show');
+            } else {
+                showError('제품코드를 찾을 수 없습니다.');
+            }
+        }
+
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+        }
+
+        // 입력 필드 포커스
+        window.addEventListener('load', function() {
+            input.focus();
+        });
+    </script>
+</body>
+</html>
