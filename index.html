@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>재고 위치 조회</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px 30px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 30px;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .upload-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 2px dashed #ddd;
+        }
+
+        .upload-label {
+            display: block;
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-upload-btn {
+            width: 100%;
+            padding: 12px;
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .file-upload-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #666;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .data-count {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button.search-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 15px;
+        }
+
+        button.search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        button.search-btn:active {
+            transform: translateY(0);
+        }
+
+        .result {
+            margin-top: 30px;
+            padding: 30px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+            animation: slideIn 0.4s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-label {
+            color: #666;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .result-value {
+            color: #333;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 25px;
+            word-break: break-all;
+        }
+
+        .location-value {
+            color: #667eea;
+            font-size: 48px;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 15px;
+            text-align: center;
+            font-weight: 600;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 15px;
+            text-align: center;
+            font-weight: 600;
+            display: none;
+        }
+
+        .success.show {
+            display: block;
+            animation: slideIn 0.4s ease-out;
+        }
+
+        .divider {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #ddd, transparent);
+            margin: 20px 0;
+        }
+
+        .instructions {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #856404;
+        }
+
+        .instructions strong {
+            display: block;
+            margin-bottom: 8px;
+            color: #856404;
+        }
+
+        .instructions ul {
+            margin-left: 20px;
+            margin-top: 8px;
+        }
+
+        .instructions li {
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .result-value {
+                font-size: 28px;
+            }
+
+            .location-value {
+                font-size: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📦 재고 위치 조회</h1>
+
+        <div class="instructions">
+            <strong>📋 Excel 파일 형식 안내</strong>
+            <ul>
+                <li>1열: 제품코드 (예: SST0700130)</li>
+                <li>2열: 제품명 (예: 락킹클립)</li>
+                <li>3열: 위치 (예: A01A01)</li>
+            </ul>
+            <em>※ 첫 번째 행이 헤더인 경우 자동으로 건너뜁니다</em>
+        </div>
+
+        <div class="upload-section">
+            <div class="upload-label">📂 Excel 파일 업로드 (.xlsx, .xls, .csv)</div>
+            <div class="file-input-wrapper">
+                <label class="file-upload-btn" for="fileInput">
+                    파일 선택
+                </label>
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFileUpload(event)">
+            </div>
+            <div class="file-info" id="fileInfo"></div>
+        </div>
+
+        <div class="data-count" id="dataCount">현재 등록된 제품: 4개</div>
+
+        <div class="search-box">
+            <label for="productCode">제품코드</label>
+            <input 
+                type="text" 
+                id="productCode" 
+                placeholder="예: SST0700130"
+                autocomplete="off"
+            >
+            <button class="search-btn" onclick="searchProduct()">🔍 검색</button>
+        </div>
+
+        <div class="error" id="error"></div>
+        <div class="success" id="success"></div>
+
+        <div class="result" id="result">
+            <div class="result-label">제품코드</div>
+            <div class="result-value" id="productCode2"></div>
+            
+            <div class="divider"></div>
+            
+            <div class="result-label">제품명</div>
+            <div class="result-value" id="productName"></div>
+            
+            <div class="divider"></div>
+            
+            <div class="result-label">보관 위치</div>
+            <div class="result-value location-value" id="productLocation"></div>
+        </div>
+    </div>
+
+    <script>
+        // 기본 샘플 데이터
+        let inventory = {
+            'SST0700130': { name: '락킹클립', loc: 'A01A01' },
+            'SUD0300180': { name: '아답터(소-L)', loc: 'A01A02' },
+            'SST0200060': { name: '입수밸브', loc: 'A01A03' },
+            'SST0200140': { name: '스템엘보', loc: 'A01A04' }
+        };
+
+        const input = document.getElementById('productCode');
+        const resultDiv = document.getElementById('result');
+        const errorDiv = document.getElementById('error');
+        const successDiv = document.getElementById('success');
+        const productCode2El = document.getElementById('productCode2');
+        const productNameEl = document.getElementById('productName');
+        const productLocationEl = document.getElementById('productLocation');
+        const dataCountEl = document.getElementById('dataCount');
+        const fileInfoEl = document.getElementById('fileInfo');
+
+        // 로컬스토리지에서 데이터 불러오기
+        function loadFromStorage() {
+            const saved = localStorage.getItem('inventoryData');
+            if (saved) {
+                inventory = JSON.parse(saved);
+                updateDataCount();
+            }
+        }
+
+        // 로컬스토리지에 저장
+        function saveToStorage() {
+            localStorage.setItem('inventoryData', JSON.stringify(inventory));
+        }
+
+        // 데이터 개수 업데이트
+        function updateDataCount() {
+            const count = Object.keys(inventory).length;
+            dataCountEl.textContent = `현재 등록된 제품: ${count}개`;
+        }
+
+        // Excel 파일 처리
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // 첫 번째 시트 읽기
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                    
+                    // 새로운 inventory 객체 생성
+                    const newInventory = {};
+                    let importCount = 0;
+                    
+                    // 데이터 파싱 (첫 행이 헤더인지 확인)
+                    let startRow = 0;
+                    if (jsonData.length > 0) {
+                        // 첫 번째 행의 첫 번째 셀이 숫자가 아니면 헤더로 간주
+                        const firstCell = String(jsonData[0][0] || '');
+                        if (isNaN(firstCell) || firstCell.toLowerCase().includes('코드') || firstCell.toLowerCase().includes('code')) {
+                            startRow = 1;
+                        }
+                    }
+                    
+                    for (let i = startRow; i < jsonData.length; i++) {
+                        const row = jsonData[i];
+                        if (row && row.length >= 3) {
+                            const code = String(row[0] || '').trim().toUpperCase();
+                            const name = String(row[1] || '').trim();
+                            const loc = String(row[2] || '').trim().toUpperCase();
+                            
+                            if (code && name && loc) {
+                                newInventory[code] = { name: name, loc: loc };
+                                importCount++;
+                            }
+                        }
+                    }
+                    
+                    if (importCount > 0) {
+                        inventory = newInventory;
+                        saveToStorage();
+                        updateDataCount();
+                        
+                        fileInfoEl.textContent = `✓ ${file.name} (${importCount}개 제품 등록됨)`;
+                        fileInfoEl.classList.add('show');
+                        
+                        showSuccess(`${importCount}개의 제품 데이터를 성공적으로 불러왔습니다!`);
+                    } else {
+                        showError('유효한 데이터를 찾을 수 없습니다. 파일 형식을 확인해주세요.');
+                    }
+                    
+                } catch (error) {
+                    showError('파일을 읽는 중 오류가 발생했습니다: ' + error.message);
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Enter 키 이벤트
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchProduct();
+            }
+        });
+
+        function searchProduct() {
+            const code = input.value.trim().toUpperCase();
+            
+            // 초기화
+            resultDiv.classList.remove('show');
+            errorDiv.classList.remove('show');
+            successDiv.classList.remove('show');
+            
+            if (!code) {
+                showError('제품코드를 입력해주세요.');
+                return;
+            }
+            
+            const product = inventory[code];
+            
+            if (product) {
+                productCode2El.textContent = code;
+                productNameEl.textContent = product.name;
+                productLocationEl.textContent = product.loc;
+                resultDiv.classList.add('show');
+            } else {
+                showError('제품코드를 찾을 수 없습니다.');
+            }
+        }
+
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+        }
+
+        function showSuccess(message) {
+            successDiv.textContent = message;
+            successDiv.classList.add('show');
+        }
+
+        // 페이지 로드 시 저장된 데이터 불러오기
+        window.addEventListener('load', function() {
+            loadFromStorage();
+            input.focus();
+        });
+    </script>
+</body>
+</html>
